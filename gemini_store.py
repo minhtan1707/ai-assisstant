@@ -37,12 +37,38 @@ def resolve_mime_type(filepath: Path) -> str:
     raise ValueError(f"Unsupported file type for upload: {filepath.suffix!r}")
 
 
+def extract_api_key(raw_value: str) -> str:
+    """Normalize a secret that may be a raw key or a pasted .env blob."""
+    value = raw_value.strip().strip("\ufeff")
+    if not value:
+        return ""
+    if "\n" not in value and not value.startswith("API_KEY=") and not value.startswith(
+        "GEMINI_API_KEY="
+    ):
+        return value.strip().strip('"').strip("'")
+    for line in value.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        for prefix in ("API_KEY=", "GEMINI_API_KEY="):
+            if stripped.startswith(prefix):
+                return stripped[len(prefix) :].strip().strip('"').strip("'")
+    first_line = value.splitlines()[0].strip()
+    if first_line.startswith("API_KEY="):
+        return first_line[len("API_KEY=") :].strip().strip('"').strip("'")
+    return first_line.strip().strip('"').strip("'")
+
+
 def resolve_api_key() -> str:
     """Resolve API key from API_KEY or GEMINI_API_KEY."""
-    api_key = os.getenv("API_KEY") or os.getenv("GEMINI_API_KEY") or ""
-    if not api_key.strip():
+    api_key = extract_api_key(os.getenv("API_KEY") or os.getenv("GEMINI_API_KEY") or "")
+    if not api_key:
         raise ValueError("Set API_KEY or GEMINI_API_KEY in the environment.")
-    return api_key.strip()
+    if "\n" in api_key or "=" in api_key:
+        raise ValueError(
+            "API_KEY secret must contain only the raw key value, not a full .env file."
+        )
+    return api_key
 
 
 def is_upload_complete(operation: object) -> bool:
