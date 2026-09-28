@@ -36,7 +36,7 @@ class KnowledgeStore(Protocol):
 
 def resolve_provider() -> str:
     """Resolve ingest provider from INGEST_PROVIDER (gemini|openai)."""
-    provider = (os.getenv("INGEST_PROVIDER") or "gemini").strip().lower()
+    provider = (os.getenv("INGEST_PROVIDER") or "openai").strip().lower()
     if provider not in SUPPORTED_PROVIDERS:
         raise ValueError(
             f"Unsupported INGEST_PROVIDER={provider!r}. Use one of: {sorted(SUPPORTED_PROVIDERS)}"

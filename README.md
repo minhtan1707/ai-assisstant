@@ -1,6 +1,6 @@
 # Knowledge Ingest Job
 
-Python batch job that scrapes help-center articles, converts them to clean Markdown, and uploads only new or changed documents to a knowledge store. **Default provider is Gemini (free tier).** OpenAI is optional via `INGEST_PROVIDER=openai`.
+Python batch job that scrapes help-center articles, converts them to clean Markdown, and uploads only new or changed documents to a knowledge store. **Default provider is OpenAI** (`INGEST_PROVIDER=openai`). Set `INGEST_PROVIDER=gemini` to use Gemini File Search instead.
 
 ## What it does
 
@@ -14,8 +14,8 @@ Python batch job that scrapes help-center articles, converts them to clean Markd
 
 | `INGEST_PROVIDER` | Target | Typical use |
 | --- | --- | --- |
-| `gemini` (default) | Gemini File Search Store | Free demo / AI Studio |
-| `openai` | OpenAI Vector Store | Playground file_search (needs credits) |
+| `openai` (default) | OpenAI Vector Store | Playground file_search |
+| `gemini` | Gemini File Search Store | AI Studio (needs billing/credits) |
 
 ## Setup
 
@@ -27,37 +27,37 @@ pip install -r requirements.txt
 cp .env.sample .env
 ```
 
-Required for **Gemini** (default):
+Required for **OpenAI** (default):
 
 | Variable | Purpose |
 | --- | --- |
-| `API_KEY` or `GEMINI_API_KEY` | Gemini API key (raw key only) |
-| `GEMINI_FILE_SEARCH_STORE_NAME` | `fileSearchStores/...` |
+| `OPEN_AI_API_KEY` | OpenAI API key (raw key only) |
+| `OPENAI_VECTOR_STORE_ID` | `vs_...` |
 | `HELP_CENTER_BASE_URL` | Help center origin |
 
-Optional for **OpenAI** (`INGEST_PROVIDER=openai`):
+Optional for **Gemini** (`INGEST_PROVIDER=gemini`):
 
 | Variable | Purpose |
 | --- | --- |
-| `OPEN_AI_API_KEY` | OpenAI API key |
-| `OPENAI_VECTOR_STORE_ID` | `vs_...` |
+| `API_KEY` or `GEMINI_API_KEY` | Gemini API key |
+| `GEMINI_FILE_SEARCH_STORE_NAME` | `fileSearchStores/...` |
 
 ## Run locally
 
 ```bash
-# Gemini (default)
+# OpenAI (default)
 python main.py
 
-# OpenAI
-INGEST_PROVIDER=openai python main.py
+# Gemini
+INGEST_PROVIDER=gemini python main.py
 ```
 
 ## Cloud Build
 
-Default substitution `_INGEST_PROVIDER: gemini`. To deploy OpenAI instead, set the trigger substitution `_INGEST_PROVIDER=openai`.
+Default substitution `_INGEST_PROVIDER: openai`. To deploy Gemini instead, set `_INGEST_PROVIDER=gemini`.
 
-## Smoke test (Gemini)
+## Smoke test (OpenAI)
 
-In Google AI Studio, attach the same File Search Store and ask:
+In OpenAI Playground, enable file_search on vector store `OPENAI_VECTOR_STORE_ID` and ask:
 
 > How do I add a YouTube video?
