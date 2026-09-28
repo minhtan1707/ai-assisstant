@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import time
@@ -12,16 +13,20 @@ from google import genai
 
 DEFAULT_CHUNK_SIZE = 2000
 DEFAULT_CHUNK_OVERLAP = 200
+DEFAULT_UPLOAD_POLL_SECONDS = 5
+DEFAULT_UPLOAD_TIMEOUT_SECONDS = 45
 
 MIME_TYPES_BY_SUFFIX: dict[str, str] = {
-    ".md": "text/markdown",
-    ".markdown": "text/markdown",
+    ".md": "text/plain",
+    ".markdown": "text/plain",
     ".txt": "text/plain",
     ".html": "text/html",
     ".htm": "text/html",
     ".json": "application/json",
     ".pdf": "application/pdf",
 }
+
+logger = logging.getLogger("ingest.gemini")
 
 
 def resolve_mime_type(filepath: Path) -> str:
@@ -38,6 +43,18 @@ def resolve_api_key() -> str:
     if not api_key.strip():
         raise ValueError("Set API_KEY or GEMINI_API_KEY in the environment.")
     return api_key.strip()
+
+
+def is_upload_complete(operation: object) -> bool:
+    """Return True when the upload LRO finished or already returned a document."""
+    if getattr(operation, "done", None) is True:
+        return True
+    response = getattr(operation, "response", None)
+    if response is None:
+        return False
+    if isinstance(response, dict):
+        return bool(response.get("document_name") or response.get("documentName"))
+    return bool(getattr(response, "document_name", None))
 
 
 def chunk_text(
@@ -95,6 +112,10 @@ class GeminiStoreManager:
 
     def upload_file(self, filepath: Path, display_name: str | None = None) -> object:
         """Upload a file and wait until the store operation completes."""
+        poll_seconds = int(os.getenv("UPLOAD_POLL_SECONDS", str(DEFAULT_UPLOAD_POLL_SECONDS)))
+        timeout_seconds = int(
+            os.getenv("UPLOAD_TIMEOUT_SECONDS", str(DEFAULT_UPLOAD_TIMEOUT_SECONDS))
+        )
         operation = self.client.file_search_stores.upload_to_file_search_store(
             file=str(filepath),
             file_search_store_name=self.store_name,
@@ -103,9 +124,30 @@ class GeminiStoreManager:
                 "mime_type": resolve_mime_type(filepath),
             },
         )
-        while not operation.done:
-            time.sleep(1)
+        deadline = time.monotonic() + timeout_seconds
+        poll_count = 0
+        while not is_upload_complete(operation):
+            if time.monotonic() >= deadline:
+                logger.warning(
+                    "Upload status for %s never reported done=%s after %ss; "
+                    "bytes were accepted, continuing to next file (operation=%s)",
+                    filepath.name,
+                    getattr(operation, "done", None),
+                    timeout_seconds,
+                    getattr(operation, "name", None),
+                )
+                return operation
+            time.sleep(poll_seconds)
             operation = self.client.operations.get(operation)
+            poll_count += 1
+            if poll_count % 6 == 0:
+                logger.info(
+                    "Still indexing %s (polls=%s done=%s)",
+                    filepath.name,
+                    poll_count,
+                    getattr(operation, "done", None),
+                )
         if getattr(operation, "error", None):
             raise RuntimeError(f"Upload failed for {filepath}: {operation.error}")
+        logger.info("Uploaded %s", filepath.name)
         return operation
