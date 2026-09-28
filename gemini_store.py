@@ -14,7 +14,7 @@ from google import genai
 DEFAULT_CHUNK_SIZE = 2000
 DEFAULT_CHUNK_OVERLAP = 200
 DEFAULT_UPLOAD_POLL_SECONDS = 5
-DEFAULT_UPLOAD_TIMEOUT_SECONDS = 45
+DEFAULT_UPLOAD_TIMEOUT_SECONDS = 0
 
 MIME_TYPES_BY_SUFFIX: dict[str, str] = {
     ".md": "text/plain",
@@ -111,7 +111,7 @@ class GeminiStoreManager:
         return len(chunk_text(text, self.chunk_size, self.chunk_overlap))
 
     def upload_file(self, filepath: Path, display_name: str | None = None) -> object:
-        """Upload a file and wait until the store operation completes."""
+        """Upload a file; optionally poll until Gemini reports the LRO complete."""
         poll_seconds = int(os.getenv("UPLOAD_POLL_SECONDS", str(DEFAULT_UPLOAD_POLL_SECONDS)))
         timeout_seconds = int(
             os.getenv("UPLOAD_TIMEOUT_SECONDS", str(DEFAULT_UPLOAD_TIMEOUT_SECONDS))
@@ -124,6 +124,13 @@ class GeminiStoreManager:
                 "mime_type": resolve_mime_type(filepath),
             },
         )
+        # Gemini often accepts the file bytes but never sets operation.done.
+        # Default is skip waiting so the Job can finish all articles.
+        if timeout_seconds <= 0 or is_upload_complete(operation):
+            if getattr(operation, "error", None):
+                raise RuntimeError(f"Upload failed for {filepath}: {operation.error}")
+            logger.info("Uploaded %s", filepath.name)
+            return operation
         deadline = time.monotonic() + timeout_seconds
         poll_count = 0
         while not is_upload_complete(operation):
