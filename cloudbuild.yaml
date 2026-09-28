@@ -1,15 +1,16 @@
 # Build image and deploy a Cloud Run Job (batch ingest).
-# Jobs do not need port 8080 / startup probes — unlike Cloud Run Services.
+# Switch provider with substitution _INGEST_PROVIDER=gemini|openai
 #
-# Trigger setup (Cloud Build → Triggers → Edit):
-#   Configuration type: Cloud Build configuration file
-#   Location: /cloudbuild.yaml
-# Secret: create Secret Manager secret "OPEN_AI_API_KEY" (raw key only).
+# Secrets (raw key values only, no KEY= prefix):
+#   - gemini: API_KEY
+#   - openai: OPEN_AI_API_KEY
 
 substitutions:
   _REGION: asia-southeast1
   _JOB_NAME: ai-assistant
   _AR_REPO: cloud-run-source-deploy
+  _INGEST_PROVIDER: gemini
+  _GEMINI_STORE_NAME: fileSearchStores/optisignshelp-ck2ai6kdse6e
   _VECTOR_STORE_ID: vs_6aba3fdae1c88191b8a143612dea342a
   _HELP_CENTER_BASE_URL: https://support.optisigns.com
   _TASK_TIMEOUT: 60m
@@ -34,20 +35,29 @@ steps:
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     id: Deploy
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - jobs
-      - deploy
-      - ${_JOB_NAME}
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_JOB_NAME}:$COMMIT_SHA
-      - --region=${_REGION}
-      - --tasks=1
-      - --max-retries=1
-      - --task-timeout=${_TASK_TIMEOUT}
-      - --set-secrets=OPEN_AI_API_KEY=OPEN_AI_API_KEY:latest
-      - --set-env-vars=OPENAI_VECTOR_STORE_ID=${_VECTOR_STORE_ID},HELP_CENTER_BASE_URL=${_HELP_CENTER_BASE_URL}
-      - --quiet
+      - -c
+      - |
+        set -euo pipefail
+        COMMON_ARGS=(
+          run jobs deploy "${_JOB_NAME}"
+          --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_JOB_NAME}:$COMMIT_SHA"
+          --region="${_REGION}"
+          --tasks=1
+          --max-retries=1
+          --task-timeout="${_TASK_TIMEOUT}"
+          --quiet
+        )
+        if [ "${_INGEST_PROVIDER}" = "openai" ]; then
+          gcloud "${COMMON_ARGS[@]}" \
+            --set-secrets=OPEN_AI_API_KEY=OPEN_AI_API_KEY:latest \
+            --set-env-vars=INGEST_PROVIDER=openai,OPENAI_VECTOR_STORE_ID=${_VECTOR_STORE_ID},HELP_CENTER_BASE_URL=${_HELP_CENTER_BASE_URL}
+        else
+          gcloud "${COMMON_ARGS[@]}" \
+            --set-secrets=API_KEY=API_KEY:latest \
+            --set-env-vars=INGEST_PROVIDER=gemini,GEMINI_FILE_SEARCH_STORE_NAME=${_GEMINI_STORE_NAME},HELP_CENTER_BASE_URL=${_HELP_CENTER_BASE_URL}
+        fi
 
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_JOB_NAME}:$COMMIT_SHA
