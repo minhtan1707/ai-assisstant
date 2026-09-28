@@ -13,6 +13,24 @@ from google import genai
 DEFAULT_CHUNK_SIZE = 2000
 DEFAULT_CHUNK_OVERLAP = 200
 
+MIME_TYPES_BY_SUFFIX: dict[str, str] = {
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    ".txt": "text/plain",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".json": "application/json",
+    ".pdf": "application/pdf",
+}
+
+
+def resolve_mime_type(filepath: Path) -> str:
+    """Resolve a MIME type the Gemini SDK cannot always infer from extension."""
+    mime_type = MIME_TYPES_BY_SUFFIX.get(filepath.suffix.lower())
+    if mime_type:
+        return mime_type
+    raise ValueError(f"Unsupported file type for upload: {filepath.suffix!r}")
+
 
 def resolve_api_key() -> str:
     """Resolve API key from API_KEY or GEMINI_API_KEY."""
@@ -80,7 +98,10 @@ class GeminiStoreManager:
         operation = self.client.file_search_stores.upload_to_file_search_store(
             file=str(filepath),
             file_search_store_name=self.store_name,
-            config={"display_name": display_name or filepath.name},
+            config={
+                "display_name": display_name or filepath.name,
+                "mime_type": resolve_mime_type(filepath),
+            },
         )
         while not operation.done:
             time.sleep(1)
