@@ -1,4 +1,4 @@
-"""One-shot scrape → delta → Gemini upload job."""
+"""One-shot scrape → delta → OpenAI Vector Store upload job."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from collections import Counter
 
 from dotenv import load_dotenv
 
-from gemini_store import GeminiStoreManager
+from openai_store import OpenAIStoreManager
 from scraper import scrape_help_center
 from state import ArticleStateStore
 
@@ -16,8 +16,8 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
-
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
 logger = logging.getLogger("ingest")
 
 
@@ -31,7 +31,7 @@ def execute_ingest() -> int:
         return 1
     logger.info("Scraped %s articles to Markdown", len(articles))
     state = ArticleStateStore()
-    store = GeminiStoreManager()
+    store = OpenAIStoreManager()
     counts: Counter[str] = Counter()
     files_uploaded = 0
     chunks_embedded = 0

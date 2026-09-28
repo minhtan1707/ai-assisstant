@@ -4,16 +4,13 @@
 # Trigger setup (Cloud Build → Triggers → Edit):
 #   Configuration type: Cloud Build configuration file
 #   Location: /cloudbuild.yaml
-#   Substitutions (optional overrides):
-#     _REGION, _JOB_NAME, _AR_REPO, _STORE_NAME, _HELP_CENTER_BASE_URL
-#   Secret: create Secret Manager secret "API_KEY" and grant Cloud Run
-#   runtime SA access; Cloud Build SA needs secretAccessor + run.admin.
+# Secret: create Secret Manager secret "OPEN_AI_API_KEY" (raw key only).
 
 substitutions:
   _REGION: asia-southeast1
   _JOB_NAME: ai-assistant
   _AR_REPO: cloud-run-source-deploy
-  _STORE_NAME: fileSearchStores/knowledgeingest-c6pbldpsc2yr
+  _VECTOR_STORE_ID: vs_6aba3fdae1c88191b8a143612dea342a
   _HELP_CENTER_BASE_URL: https://support.optisigns.com
   _TASK_TIMEOUT: 60m
 
@@ -48,8 +45,8 @@ steps:
       - --tasks=1
       - --max-retries=1
       - --task-timeout=${_TASK_TIMEOUT}
-      - --set-secrets=API_KEY=API_KEY:latest
-      - --set-env-vars=GEMINI_FILE_SEARCH_STORE_NAME=${_STORE_NAME},HELP_CENTER_BASE_URL=${_HELP_CENTER_BASE_URL}
+      - --set-secrets=OPEN_AI_API_KEY=OPEN_AI_API_KEY:latest
+      - --set-env-vars=OPENAI_VECTOR_STORE_ID=${_VECTOR_STORE_ID},HELP_CENTER_BASE_URL=${_HELP_CENTER_BASE_URL}
       - --quiet
 
 images:
