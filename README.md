@@ -23,9 +23,20 @@ python main.py
 uvicorn app:app --reload --port 8080
 ```
 
-Chat example (server running):
+API examples (server running):
 
 ```bash
+# Rescrape / ingest (starts in background, returns 202)
+curl -X POST "http://localhost:8080/api/v1/ingest" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $SERVICE_API_KEY" \
+  -d '{"provider":"openai"}'
+
+# Ingest status
+curl "http://localhost:8080/api/v1/ingest/status" \
+  -H "X-API-Key: $SERVICE_API_KEY"
+
+# Chat
 curl -X POST "http://localhost:8080/api/v1/chat" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $SERVICE_API_KEY" \
