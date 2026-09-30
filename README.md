@@ -61,11 +61,20 @@ docker run --rm \
 
 Cloud Scheduler triggers daily ingest on Cloud Run service `ai-assisstant` (`asia-southeast1`).
 
-- [Cloud Run logs — ai-assisstant](https://console.cloud.google.com/run/detail/asia-southeast1/ai-assisstant/logs)
+- [Cloud Scheduler — daily job](https://console.cloud.google.com/cloudscheduler?referrer=search&authuser=1&project=project-199e43ec-f249-44ed-af3)
+- [Cloud Run logs — ai-assisstant](https://console.cloud.google.com/run/detail/asia-southeast1/ai-assisstant/logs?project=project-199e43ec-f249-44ed-af3)
 - Look for: `INGEST_STARTED`, `INGEST_SUMMARY`, `INGEST_FINISHED`
 
 ## Sample assistant answer
 
 Question: *How do I add a YouTube video?*
 
-![Assistant answering a sample question](docs/screenshots/assistant-sample.jpg)
+The assistant cannot answer this question right now. Both OpenAI and Gemini reject the request because the accounts have no credits remaining.
+
+OpenAI returns `credit_balance_exhausted` (`insufficient_quota`). The Playground and `POST /api/v1/chat` show:
+
+> You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.
+
+Gemini fails for the same reason: the API key has no remaining credits, so grounded chat stays blocked until billing is topped up on both providers.
+
+![OpenAI Playground: no credits remaining for "How do I add a YouTube video?"](docs/screenshots/Screenshot_118.png)
