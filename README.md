@@ -43,6 +43,30 @@ curl -X POST "http://localhost:8080/api/v1/chat" \
   -d '{"message":"How do I add a YouTube video?"}'
 ```
 
+## Deployed API
+
+Cloud Run service `ai-assisstant` (`asia-southeast1`):
+
+`https://ai-assisstant-228150331350.asia-southeast1.run.app`
+
+Send `X-API-Key` on `/api/v1/ingest`, `/api/v1/ingest/status`, and `/api/v1/chat`. The value below is for demonstration only. Rotate it in Secret Manager (`AI_ASSISTANT_ENV` → `SERVICE_API_KEY`); Cloud Run reads that secret at `/secrets/.env`.
+
+```bash
+# Demo key — change anytime in Secret Manager
+SERVICE_API_KEY=12gVG3232vqvDVEWg32gvwe
+BASE_URL=https://ai-assisstant-228150331350.asia-southeast1.run.app
+
+# Chat
+curl -X POST "$BASE_URL/api/v1/chat" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $SERVICE_API_KEY" \
+  -d '{"message":"How do I add a YouTube video?"}'
+
+# Ingest status
+curl "$BASE_URL/api/v1/ingest/status" \
+  -H "X-API-Key: $SERVICE_API_KEY"
+```
+
 ## Docker (one-shot job)
 
 Default image command is `python main.py` (runs once, exits `0` on success):
